@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hand Tracking System — Python · OpenCV · MediaPipe · Arduino</title>
+<meta name="description" content="A real-time hand tracking system that counts fingers with a webcam and drives Arduino LEDs over serial — built with Python, OpenCV and MediaPipe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1512;
+    --bg-alt:#0d1c17;
+    --panel:#11221c;
+    --panel-2:#16281f;
+    --line:#213a2e;
+    --text:#e9f6ee;
+    --muted:#7fa08d;
+    --mint:#7cffb2;
+    --mint-soft:rgba(124,255,178,0.14);
+    --mint-dim:#3f6d54;
+    --amber:#ffb454;
+    --amber-soft:rgba(255,180,84,0.14);
+    --amber-dim:#7a5c34;
+    --display:'Space Grotesk',sans-serif;
+    --body:'IBM Plex Sans',sans-serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(124,255,178,0.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(255,180,84,0.06), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a{color:inherit;}
+  img,svg{display:block;max-width:100%;}
+
+  ::selection{background:var(--mint-soft);color:var(--mint);}
+
+  :focus-visible{
+    outline:2px solid var(--mint);
+    outline-offset:3px;
+    border-radius:4px;
+  }
+
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px;}
+
+  h1,h2,h3{font-family:var(--display);letter-spacing:-0.01em;margin:0;}
+
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--mint);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:7px;height:7px;border-radius:50%;
+    background:var(--mint);
+    box-shadow:0 0 8px 2px var(--mint-soft);
+  }
+
+  /* ---------- NAV ---------- */
+  header.site{
+    position:sticky;top:0;z-index:40;
+    background:rgba(10,21,18,0.82);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav.wrap{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 28px;
+  }
+  .logo{
+    font-family:var(--mono);
+    font-weight:600;
+    font-size:15px;
+    letter-spacing:0.02em;
+    display:flex;align-items:center;gap:8px;
+  }
+  .logo span{color:var(--mint);}
+  .navlinks{display:flex;gap:26px;font-size:14px;color:var(--muted);}
+  .navlinks a{text-decoration:none;transition:color .15s ease;}
+  .navlinks a:hover{color:var(--text);}
+  .nav-cta{
+    font-family:var(--mono);
+    font-size:13px;
+    border:1px solid var(--mint-dim);
+    color:var(--mint);
+    padding:8px 14px;
+    border-radius:7px;
+    text-decoration:none;
+    transition:background .15s ease, border-color .15s ease;
+    white-space:nowrap;
+  }
+  .nav-cta:hover{background:var(--mint-soft);border-color:var(--mint);}
+  @media (max-width:760px){ .navlinks{display:none;} }
+
+  /* ---------- HERO ---------- */
+  .hero{padding:76px 0 40px;}
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.05fr 0.95fr;
+    gap:56px;
+    align-items:center;
+  }
+  @media (max-width:900px){ .hero-grid{grid-template-columns:1fr;gap:44px;} }
+
+  .hero h1{
+    font-size:clamp(34px,5vw,54px);
+    line-height:1.05;
+    margin:16px 0 20px;
+  }
+  .hero h1 em{
+    font-style:normal;
+    color:var(--mint);
+  }
+  .hero p.lede{
+    color:var(--muted);
+    font-size:17px;
+    max-width:46ch;
+    margin:0 0 30px;
+  }
+  .hero-ctas{display:flex;gap:14px;flex-wrap:wrap;}
+  .btn{
+    font-family:var(--mono);
+    font-size:14px;
+    padding:12px 20px;
+    border-radius:8px;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .btn-primary{
+    background:var(--mint);
+    color:#08150f;
+    font-weight:600;
+    box-shadow:0 0 0 1px rgba(124,255,178,0.4);
+  }
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 22px -6px rgba(124,255,178,0.5);}
+  .btn-ghost{
+    border:1px solid var(--line);
+    color:var(--text);
+  }
+  .btn-ghost:hover{border-color:var(--mint-dim);background:var(--panel);}
+
+  /* ---------- SIGNATURE: hand + LED demo ---------- */
+  .demo-panel{
+    background:linear-gradient(180deg,var(--panel),var(--bg-alt));
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:26px 22px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .demo-panel::before{
+    content:'';
+    position:absolute;inset:0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:26px 26px;
+    opacity:0.35;
+    mask-image:radial-gradient(ellipse at 50% 30%, black 0%, transparent 72%);
+  }
+  .demo-topline{
+    position:relative;
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono);font-size:11px;color:var(--muted);
+    letter-spacing:0.08em;text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .demo-topline .live{color:var(--mint);display:flex;align-items:center;gap:6px;}
+  .demo-topline .live::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--mint);animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.25;}}
+
+  .hand-stage{position:relative;height:250px;margin:6px 0 14px;}
+  .hand-stage svg{position:absolute;inset:0;width:100%;height:100%;}
+  .lm-line{stroke:var(--mint-dim);stroke-width:2.2;stroke-linecap:round;transition:stroke .25s ease, x2 .35s cubic-bezier(.4,0,.2,1), y2 .35s cubic-bezier(.4,0,.2,1);}
+  .lm-line.up{stroke:var(--mint);}
+  .lm-dot{fill:#0d2019;stroke:var(--mint-dim);stroke-width:1.6;transition:fill .25s ease, stroke .25s ease, cx .35s ease, cy .35s ease, opacity .25s ease;}
+  .lm-dot.up{fill:var(--mint);stroke:var(--mint);filter:drop-shadow(0 0 4px rgba(124,255,178,0.75));}
+  .palm{fill:var(--panel-2);stroke:var(--line);stroke-width:1.4;}
+  .wrist-dot{fill:#0d2019;stroke:var(--mint-dim);stroke-width:1.6;}
+
+  .readout{
+    position:relative;
+    display:flex;align-items:baseline;justify-content:space-between;
+    border-top:1px dashed var(--line);
+    padding-top:14px;
+    font-family:var(--mono);
+  }
+  .readout .count{font-size:13px;color:var(--muted);}
+  .readout .count b{color:var(--mint);font-size:20px;}
+  .readout .fps{font-size:12px;color:var(--muted);}
+
+  .led-row{
+    position:relative;
+    display:flex;gap:12px;justify-content:center;
+    margin-top:16px;
+    padding:14px 10px;
+    background:var(--bg-alt);
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  .led{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    font-family:var(--mono);font-size:10px;color:var(--muted);
+  }
+  .led i{
+    width:20px;height:20px;border-radius:50%;
+    background:#241a10;
+    border:1px solid var(--amber-dim);
+    transition:background .25s ease, box-shadow .25s ease, border-color .25s ease;
+    display:block;
+  }
+  .led.on i{
+    background:var(--amber);
+    border-color:var(--amber);
+    box-shadow:0 0 10px 3px var(--amber-soft);
+  }
+  .caption{
+    font-family:var(--mono);font-size:11px;color:var(--muted);
+    text-align:center;margin-top:12px;letter-spacing:0.02em;
+  }
+
+  /* ---------- SECTION shell ---------- */
+  section{padding:70px 0;border-top:1px solid var(--line);}
+  .section-head{max-width:640px;margin-bottom:44px;}
+  .section-head h2{font-size:clamp(26px,3.4vw,36px);margin:14px 0 12px;}
+  .section-head p{color:var(--muted);font-size:15.5px;margin:0;}
+
+  /* ---------- PIPELINE ---------- */
+  .pipeline{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:0;
+    position:relative;
+  }
+  .pipeline::before{
+    content:'';
+    position:absolute;top:20px;left:20px;right:20px;height:1px;
+    background:repeating-linear-gradient(90deg,var(--line) 0 8px, transparent 8px 14px);
+  }
+  @media (max-width:900px){
+    .pipeline{grid-template-columns:1fr;gap:0;}
+    .pipeline::before{display:none;}
+  }
+  .pipe-step{padding:0 14px 0 0;position:relative;}
+  @media (max-width:900px){ .pipe-step{padding:0 0 28px 34px;border-left:1px dashed var(--line);margin-left:20px;} }
+  .pipe-num{
+    width:40px;height:40px;border-radius:50%;
+    background:var(--panel);border:1px solid var(--mint-dim);
+    color:var(--mint);font-family:var(--mono);font-size:14px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;z-index:1;margin-bottom:16px;
+  }
+  @media (max-width:900px){ .pipe-num{position:absolute;left:-20px;top:-2px;margin-bottom:0;} }
+  .pipe-step h3{font-size:15px;margin-bottom:6px;}
+  .pipe-step p{font-size:13.5px;color:var(--muted);margin:0;}
+
+  /* ---------- GESTURE TABLES ---------- */
+  .mode-toggle{
+    display:inline-flex;background:var(--panel);border:1px solid var(--line);
+    border-radius:9px;padding:4px;margin-bottom:26px;
+  }
+  .mode-toggle button{
+    font-family:var(--mono);font-size:13px;
+    padding:8px 16px;border:none;border-radius:6px;background:transparent;color:var(--muted);
+    cursor:pointer;transition:background .15s ease,color .15s ease;
+  }
+  .mode-toggle button.active{background:var(--mint);color:#08150f;font-weight:600;}
+
+  .gesture-table-wrap{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;
+  }
+  table.gesture{width:100%;border-collapse:collapse;font-size:14.5px;}
+  table.gesture th{
+    text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;
+    text-transform:uppercase;color:var(--muted);background:var(--panel-2);
+    padding:14px 20px;border-bottom:1px solid var(--line);
+  }
+  table.gesture td{padding:14px 20px;border-bottom:1px solid var(--line);}
+  table.gesture tr:last-child td{border-bottom:none;}
+  table.gesture .gicon{font-size:20px;margin-right:10px;}
+  .led-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:var(--mono);font-size:12px;
+    background:var(--bg-alt);border:1px solid var(--line);
+    padding:4px 9px;border-radius:6px;margin:2px 4px 2px 0;
+  }
+  .led-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 6px 1px var(--amber-soft);}
+  .gesture-panel{display:none;}
+  .gesture-panel.active{display:block;}
+
+  /* ---------- FEATURES ---------- */
+  .feature-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  }
+  @media (max-width:820px){ .feature-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .feature-grid{grid-template-columns:1fr;} }
+  .feature{
+    background:var(--panel);padding:24px 22px;
+  }
+  .feature .tag{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;
+    color:var(--mint);text-transform:uppercase;
+    display:inline-block;margin-bottom:10px;
+    border:1px solid var(--mint-dim);border-radius:5px;padding:2px 7px;
+  }
+  .feature h3{font-size:15.5px;margin-bottom:6px;}
+  .feature p{font-size:13.5px;color:var(--muted);margin:0;}
+
+  /* ---------- TECH STRIP ---------- */
+  .tech-strip{
+    display:flex;flex-wrap:wrap;gap:10px;
+  }
+  .tech-chip{
+    font-family:var(--mono);font-size:13px;
+    border:1px solid var(--line);border-radius:20px;
+    padding:8px 16px;color:var(--text);background:var(--panel);
+  }
+
+  /* ---------- WIRING ---------- */
+  .wiring-grid{display:grid;grid-template-columns:1.1fr 0.9fr;gap:44px;align-items:start;}
+  @media (max-width:880px){ .wiring-grid{grid-template-columns:1fr;} }
+  .wiring-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;
+  }
+  table.pins{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px;}
+  table.pins th{text-align:left;color:var(--muted);font-weight:500;padding:10px 6px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;}
+  table.pins td{padding:10px 6px;border-bottom:1px solid var(--line);}
+  table.pins tr:last-child td{border-bottom:none;}
+
+  /* ---------- CODE ---------- */
+  .code-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media (max-width:880px){ .code-grid{grid-template-columns:1fr;} }
+  .code-card{
+    background:#0c1a15;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  }
+  .code-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 18px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+  }
+  .code-head span.dot{width:8px;height:8px;border-radius:50%;background:var(--mint);display:inline-block;margin-right:8px;box-shadow:0 0 6px 1px var(--mint-soft);}
+  pre{
+    margin:0;padding:20px;overflow-x:auto;
+    font-family:var(--mono);font-size:12.5px;line-height:1.7;color:#cfe9da;
+  }
+  pre .kw{color:var(--mint);}
+  pre .fn{color:var(--amber);}
+  pre .cm{color:var(--muted);}
+  pre .st{color:#9fd8f2;}
+
+  /* ---------- FOOTER ---------- */
+  footer{padding:60px 0 50px;border-top:1px solid var(--line);}
+  .footer-grid{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;}
+  .footer-grid h2{font-size:clamp(24px,3vw,32px);max-width:520px;}
+  .footer-grid p{color:var(--muted);font-size:14px;max-width:480px;margin-top:10px;}
+  .footer-meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:40px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid var(--line);padding-top:20px;}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .demo-topline .live::before{animation:none;}
+    .lm-line, .lm-dot, .led i{transition:none;}
+  }
+
+  /* ---------- LIVE CAMERA ---------- */
+  .live-grid{display:grid;grid-template-columns:1.2fr 0.8fr;gap:28px;align-items:start;}
+  @media (max-width:880px){ .live-grid{grid-template-columns:1fr;} }
+
+  .live-camera-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;
+  }
+  .live-topline{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    flex-wrap:wrap;margin-bottom:10px;
+  }
+  .conn-status{
+    font-family:var(--mono);font-size:12.5px;color:var(--muted);
+    display:flex;align-items:center;gap:8px;
+  }
+  .conn-status.on::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px 2px var(--mint-soft);animation:blink 1.6s ease-in-out infinite;}
+  .conn-status.err::before{content:'';width:7px;height:7px;border-radius:50%;background:#ff6b5e;}
+
+  .camera-stage{
+    position:relative;width:100%;aspect-ratio:4/3;
+    background:var(--bg-alt);border:1px solid var(--line);border-radius:10px;
+    overflow:hidden;
+  }
+  .camera-stage canvas{width:100%;height:100%;display:block;}
+  .camera-placeholder{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:center;padding:20px;
+  }
+  .camera-stage.active .camera-placeholder{display:none;}
+  .live-note{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:12px;text-align:center;}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <nav class="wrap">
+    <div class="logo">HAND<span>TRACK</span>//05</div>
+    <div class="navlinks">
+      <a href="#live">Try it live</a>
+      <a href="#how">How it works</a>
+      <a href="#gestures">Gestures</a>
+      <a href="#features">Features</a>
+      <a href="#wiring">Wiring</a>
+      <a href="#code">Code</a>
+    </div>
+    <a class="nav-cta" href="https://github.com/" target="_blank" rel="noopener">View on GitHub ↗</a>
+  </nav>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero" style="border-top:none;">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow">Python · OpenCV · MediaPipe · Arduino</div>
+        <h1>Count to five with your hand.<br><em>Five LEDs count with you.</em></h1>
+        <p class="lede">A real-time hand tracking system that watches a webcam feed, works out how many fingers you're holding up, and pushes that number straight to an Arduino over serial — no buttons, no gloves, just a hand in front of a camera.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="https://github.com/" target="_blank" rel="noopener">Get the code</a>
+          <a class="btn btn-ghost" href="#wiring">See the wiring →</a>
+        </div>
+      </div>
+
+      <div class="demo-panel">
+        <div class="demo-topline">
+          <span>hand_landmarks.py</span>
+          <span class="live">tracking</span>
+        </div>
+
+        <div class="hand-stage">
+          <svg viewBox="0 0 300 300" aria-hidden="true">
+            <!-- palm -->
+            <path class="palm" d="M100,190 Q100,150 130,140 L200,140 Q222,150 222,190 L222,235 Q222,265 190,270 L120,270 Q92,265 92,235 Z"/>
+            <!-- finger lines (updated by JS) -->
+            <line id="f-thumb" class="lm-line" x1="105" y1="205" x2="85" y2="205"></line>
+            <line id="f-index" class="lm-line" x1="120" y1="150" x2="120" y2="175"></line>
+            <line id="f-middle" class="lm-line" x1="150" y1="140" x2="150" y2="168"></line>
+            <line id="f-ring" class="lm-line" x1="180" y1="145" x2="180" y2="172"></line>
+            <line id="f-pinky" class="lm-line" x1="205" y1="158" x2="205" y2="180"></line>
+            <!-- base joints -->
+            <circle class="lm-dot" cx="105" cy="205" r="4.5"></circle>
+            <circle class="lm-dot" cx="120" cy="150" r="4.5"></circle>
+            <circle class="lm-dot" cx="150" cy="140" r="4.5"></circle>
+            <circle class="lm-dot" cx="180" cy="145" r="4.5"></circle>
+            <circle class="lm-dot" cx="205" cy="158" r="4.5"></circle>
+            <!-- tips (updated by JS) -->
+            <circle id="t-thumb" class="lm-dot" cx="85" cy="205" r="5.5"></circle>
+            <circle id="t-index" class="lm-dot" cx="120" cy="175" r="5.5"></circle>
+            <circle id="t-middle" class="lm-dot" cx="150" cy="168" r="5.5"></circle>
+            <circle id="t-ring" class="lm-dot" cx="180" cy="172" r="5.5"></circle>
+            <circle id="t-pinky" class="lm-dot" cx="205" cy="180" r="5.5"></circle>
+            <!-- wrist -->
+            <circle class="wrist-dot" cx="157" cy="272" r="5"></circle>
+          </svg>
+        </div>
+
+        <div class="readout">
+          <div class="count">FINGERS <b id="count-readout">0</b> / 5</div>
+          <div class="fps">42 FPS · SERIAL /dev/ttyUSB0</div>
+        </div>
+
+        <div class="led-row" id="led-row">
+          <div class="led" data-led="1"><i></i>D2</div>
+          <div class="led" data-led="2"><i></i>D3</div>
+          <div class="led" data-led="3"><i></i>D4</div>
+          <div class="led" data-led="4"><i></i>D5</div>
+          <div class="led" data-led="5"><i></i>D6</div>
+        </div>
+        <div class="caption">simplified 16-point landmark rig · level-meter LED mode</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE CAMERA -->
+  <section id="live">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Try it now</div>
+        <h2>Point your webcam at your hand</h2>
+        <p>This runs the real hand-tracking model right here in your browser tab — your video never leaves your device. Allow camera access and hold up some fingers.</p>
+      </div>
+
+      <div class="live-grid">
+        <div class="live-camera-card">
+          <div class="live-topline">
+            <span class="conn-status" id="live-status">Camera off</span>
+            <button class="btn btn-primary" id="live-toggle" onclick="toggleCamera()">Enable camera</button>
+          </div>
+          <div class="live-topline" style="margin-bottom:14px;">
+            <span class="conn-status" id="serial-status">Arduino not connected</span>
+            <button class="btn btn-ghost" id="serial-toggle" onclick="toggleSerial()">Connect Arduino</button>
+          </div>
+          <div class="camera-stage" id="camera-stage">
+            <video id="live-video" playsinline muted style="display:none;"></video>
+            <canvas id="live-canvas" width="640" height="480"></canvas>
+            <div class="camera-placeholder" id="camera-placeholder">Camera preview appears here once enabled</div>
+          </div>
+          <div class="live-note">Camera tracking runs fully client-side · Arduino link uses the Web Serial API (Chrome/Edge on desktop)</div>
+        </div>
+
+        <div class="live-side">
+          <div class="demo-panel" style="padding-top:20px;">
+            <div class="readout" style="border-top:none;padding-top:0;">
+              <div class="count">FINGERS <b id="live-count-readout">0</b> / 5</div>
+              <div class="fps" id="live-fps">— FPS</div>
+            </div>
+            <div class="led-row" id="live-led-row">
+              <div class="led" data-led="1"><i></i>D2</div>
+              <div class="led" data-led="2"><i></i>D3</div>
+              <div class="led" data-led="3"><i></i>D4</div>
+              <div class="led" data-led="4"><i></i>D5</div>
+              <div class="led" data-led="5"><i></i>D6</div>
+            </div>
+            <div class="caption">this is the same count your Arduino would receive over serial</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Pipeline</div>
+        <h2>From webcam frame to lit LED, six steps</h2>
+        <p>Every loop of the program runs the same short chain — nothing is stateful beyond a small smoothing buffer, so it recovers instantly if a hand leaves the frame.</p>
+      </div>
+      <div class="pipeline">
+        <div class="pipe-step"><div class="pipe-num">01</div><h3>Capture</h3><p>OpenCV grabs a frame from the webcam via <code>VideoCapture</code>, mirrored for a natural view.</p></div>
+        <div class="pipe-step"><div class="pipe-num">02</div><h3>Detect</h3><p>MediaPipe Hands locates the hand and returns 21 landmark points, up to 60 times a second.</p></div>
+        <div class="pipe-step"><div class="pipe-num">03</div><h3>Count</h3><p>Each fingertip's position is compared to its lower joint to decide if that finger is raised.</p></div>
+        <div class="pipe-step"><div class="pipe-num">04</div><h3>Filter</h3><p>A short rolling buffer of recent counts smooths out single-frame flicker before it reaches the LEDs.</p></div>
+        <div class="pipe-step"><div class="pipe-num">05</div><h3>Transmit</h3><p>The stable count is written as one character over serial with PySerial, at a fixed baud rate.</p></div>
+        <div class="pipe-step"><div class="pipe-num">06</div><h3>Actuate</h3><p>The Arduino sketch reads that byte and drives <code>digitalWrite</code> on the matching LED pins.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GESTURES -->
+  <section id="gestures">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Gesture map</div>
+        <h2>Two ways to wire a finger count to light</h2>
+        <p>Both modes read the same finger count — they only differ in how the Arduino sketch interprets it. Pick whichever suits the build.</p>
+      </div>
+
+      <div class="mode-toggle" role="tablist" aria-label="Gesture mapping mode">
+        <button class="active" id="btn-mode-a" onclick="setMode('a')" role="tab" aria-selected="true">Mode A · Single indicator</button>
+        <button id="btn-mode-b" onclick="setMode('b')" role="tab" aria-selected="false">Mode B · Level meter</button>
+      </div>
+
+      <div class="gesture-table-wrap">
+        <div class="gesture-panel active" id="panel-a">
+          <table class="gesture">
+            <thead><tr><th>Hand gesture</th><th>Arduino action</th></tr></thead>
+            <tbody>
+              <tr><td><span class="gicon">✊</span>Fist · 0 fingers</td><td>All LEDs off</td></tr>
+              <tr><td><span class="gicon">☝️</span>1 finger</td><td><span class="led-chip">LED 1 on</span></td></tr>
+              <tr><td><span class="gicon">✌️</span>2 fingers</td><td><span class="led-chip">LED 2 on</span></td></tr>
+              <tr><td><span class="gicon">🤟</span>3 fingers</td><td><span class="led-chip">LED 3 on</span></td></tr>
+              <tr><td><span class="gicon">🖖</span>4 fingers</td><td><span class="led-chip">LED 4 on</span></td></tr>
+              <tr><td><span class="gicon">🖐️</span>5 fingers</td><td><span class="led-chip">LED 5 on</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="gesture-panel" id="panel-b">
+          <table class="gesture">
+            <thead><tr><th>Fingers</th><th>LEDs on</th></tr></thead>
+            <tbody>
+              <tr><td><span class="gicon">☝️</span>1</td><td><span class="led-chip">LED 1</span></td></tr>
+              <tr><td><span class="gicon">✌️</span>2</td><td><span class="led-chip">LED 1</span><span class="led-chip">LED 2</span></td></tr>
+              <tr><td><span class="gicon">🤟</span>3</td><td><span class="led-chip">LED 1</span><span class="led-chip">LED 2</span><span class="led-chip">LED 3</span></td></tr>
+              <tr><td><span class="gicon">🖖</span>4</td><td><span class="led-chip">LED 1</span><span class="led-chip">LED 2</span><span class="led-chip">LED 3</span><span class="led-chip">LED 4</span></td></tr>
+              <tr><td><span class="gicon">🖐️</span>5</td><td><span class="led-chip">LED 1</span><span class="led-chip">LED 2</span><span class="led-chip">LED 3</span><span class="led-chip">LED 4</span><span class="led-chip">LED 5</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Roadmap</div>
+        <h2>What the system can grow into</h2>
+        <p>The core loop is deliberately small. Everything below bolts on without touching the finger-counting logic itself.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature"><span class="tag">Vision</span><h3>30–60 FPS tracking</h3><p>Live hand tracking tuned to stay smooth on ordinary laptop webcams.</p></div>
+        <div class="feature"><span class="tag">Vision</span><h3>Noise-filtered gestures</h3><p>A rolling buffer keeps a single misread frame from flipping an LED.</p></div>
+        <div class="feature"><span class="tag">Display</span><h3>On-screen finger count</h3><p>The live count is overlaid on the camera window as it's detected.</p></div>
+        <div class="feature"><span class="tag">Hardware</span><h3>LED animation effects</h3><p>Fades and chases layered on top of the plain on/off states.</p></div>
+        <div class="feature"><span class="tag">Hardware</span><h3>RGB LED support</h3><p>Swap single-colour LEDs for RGB and map counts to a colour ramp.</p></div>
+        <div class="feature"><span class="tag">Hardware</span><h3>OLED / LCD readout</h3><p>Mirror the finger count on a small screen wired to the Arduino.</p></div>
+        <div class="feature"><span class="tag">Hardware</span><h3>Buzzer feedback</h3><p>A short tone confirms each gesture change without looking at the board.</p></div>
+        <div class="feature"><span class="tag">Software</span><h3>Web dashboard</h3><p>A lightweight page showing the live finger count over the network.</p></div>
+        <div class="feature"><span class="tag">Software</span><h3>Voice announcements</h3><p>Spoken confirmation such as "one finger detected" on each change.</p></div>
+        <div class="feature"><span class="tag">Software</span><h3>Automatic COM port detection</h3><p>The script finds the Arduino on connect instead of a hard-coded port.</p></div>
+        <div class="feature"><span class="tag">Software</span><h3>Modern GUI</h3><p>A desktop window combining the camera feed with live status panels.</p></div>
+        <div class="feature"><span class="tag">Software</span><h3>Session logging</h3><p>Optional CSV log of every gesture change, timestamped for review.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH -->
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Stack</div>
+        <h2>Built with</h2>
+      </div>
+      <div class="tech-strip">
+        <span class="tech-chip">Python 3</span>
+        <span class="tech-chip">OpenCV</span>
+        <span class="tech-chip">MediaPipe Hands</span>
+        <span class="tech-chip">PySerial</span>
+        <span class="tech-chip">Arduino Uno</span>
+        <span class="tech-chip">Arduino C++</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- WIRING -->
+  <section id="wiring">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Hardware</div>
+        <h2>Wiring the five LEDs</h2>
+        <p>Each LED sits on its own digital pin through a current-limiting resistor, with a shared ground rail back to the Arduino.</p>
+      </div>
+      <div class="wiring-grid">
+        <div class="wiring-card">
+          <svg viewBox="0 0 520 260" aria-hidden="true">
+            <rect x="20" y="70" width="140" height="120" rx="10" fill="#16281f" stroke="#213a2e"/>
+            <text x="90" y="135" fill="#7fa08d" font-family="IBM Plex Mono, monospace" font-size="12" text-anchor="middle">Arduino</text>
+            <text x="90" y="150" fill="#7fa08d" font-family="IBM Plex Mono, monospace" font-size="12" text-anchor="middle">Uno</text>
+            <circle cx="150" cy="90" r="3" fill="#7cffb2"/>
+            <circle cx="150" cy="112" r="3" fill="#7cffb2"/>
+            <circle cx="150" cy="134" r="3" fill="#7cffb2"/>
+            <circle cx="150" cy="156" r="3" fill="#7cffb2"/>
+            <circle cx="150" cy="178" r="3" fill="#7cffb2"/>
+            <text x="132" y="94" fill="#e9f6ee" font-family="IBM Plex Mono, monospace" font-size="10" text-anchor="end">D2</text>
+            <text x="132" y="116" fill="#e9f6ee" font-family="IBM Plex Mono, monospace" font-size="10" text-anchor="end">D3</text>
+            <text x="132" y="138" fill="#e9f6ee" font-family="IBM Plex Mono, monospace" font-size="10" text-anchor="end">D4</text>
+            <text x="132" y="160" fill="#e9f6ee" font-family="IBM Plex Mono, monospace" font-size="10" text-anchor="end">D5</text>
+            <text x="132" y="182" fill="#e9f6ee" font-family="IBM Plex Mono, monospace" font-size="10" text-anchor="end">D6</text>
+
+            <!-- five led branches -->
+            <g font-family="IBM Plex Mono, monospace" font-size="9" fill="#7fa08d">
+              <!-- LED1 -->
+              <line x1="150" y1="90" x2="230" y2="90" stroke="#3f6d54" stroke-width="1.5"/>
+              <rect x="230" y="84" width="26" height="12" fill="none" stroke="#7fa08d"/>
+              <line x1="256" y1="90" x2="300" y2="90" stroke="#3f6d54" stroke-width="1.5"/>
+              <circle cx="316" cy="90" r="12" fill="#ffb454" opacity="0.9"/>
+              <text x="316" y="112" text-anchor="middle">LED1</text>
+              <line x1="328" y1="90" x2="420" y2="90" stroke="#3f6d54" stroke-width="1.5"/>
+
+              <!-- LED2 -->
+              <line x1="150" y1="112" x2="230" y2="112" stroke="#3f6d54" stroke-width="1.5"/>
+              <rect x="230" y="106" width="26" height="12" fill="none" stroke="#7fa08d"/>
+              <line x1="256" y1="112" x2="300" y2="112" stroke="#3f6d54" stroke-width="1.5"/>
+              <circle cx="316" cy="112" r="12" fill="#ffb454" opacity="0.9"/>
+              <text x="316" y="134" text-anchor="middle">LED2</text>
+              <line x1="328" y1="112" x2="420" y2="112" stroke="#3f6d54" stroke-width="1.5"/>
+
+              <!-- LED3 -->
+              <line x1="150" y1="134" x2="230" y2="134" stroke="#3f6d54" stroke-width="1.5"/>
+              <rect x="230" y="128" width="26" height="12" fill="none" stroke="#7fa08d"/>
+              <line x1="256" y1="134" x2="300" y2="134" stroke="#3f6d54" stroke-width="1.5"/>
+              <circle cx="316" cy="134" r="12" fill="#ffb454" opacity="0.9"/>
+              <text x="316" y="156" text-anchor="middle">LED3</text>
+              <line x1="328" y1="134" x2="420" y2="134" stroke="#3f6d54" stroke-width="1.5"/>
+
+              <!-- LED4 -->
+              <line x1="150" y1="156" x2="230" y2="156" stroke="#3f6d54" stroke-width="1.5"/>
+              <rect x="230" y="150" width="26" height="12" fill="none" stroke="#7fa08d"/>
+              <line x1="256" y1="156" x2="300" y2="156" stroke="#3f6d54" stroke-width="1.5"/>
+              <circle cx="316" cy="156" r="12" fill="#ffb454" opacity="0.9"/>
+              <text x="316" y="178" text-anchor="middle">LED4</text>
+              <line x1="328" y1="156" x2="420" y2="156" stroke="#3f6d54" stroke-width="1.5"/>
+
+              <!-- LED5 -->
+              <line x1="150" y1="178" x2="230" y2="178" stroke="#3f6d54" stroke-width="1.5"/>
+              <rect x="230" y="172" width="26" height="12" fill="none" stroke="#7fa08d"/>
+              <line x1="256" y1="178" x2="300" y2="178" stroke="#3f6d54" stroke-width="1.5"/>
+              <circle cx="316" cy="178" r="12" fill="#ffb454" opacity="0.9"/>
+              <text x="316" y="200" text-anchor="middle">LED5</text>
+              <line x1="328" y1="178" x2="420" y2="178" stroke="#3f6d54" stroke-width="1.5"/>
+            </g>
+
+            <!-- ground rail -->
+            <line x1="420" y1="90" x2="420" y2="178" stroke="#7fa08d" stroke-width="1.5"/>
+            <line x1="420" y1="200" x2="60" y2="200" stroke="#7fa08d" stroke-width="1.5"/>
+            <line x1="60" y1="200" x2="60" y2="190" stroke="#7fa08d" stroke-width="1.5"/>
+            <text x="440" y="94" fill="#7fa08d" font-family="IBM Plex Mono, monospace" font-size="10">GND rail</text>
+          </svg>
+        </div>
+
+        <div class="wiring-card">
+          <table class="pins">
+            <thead><tr><th>Pin</th><th>Component</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>D2</td><td>LED 1 + 220Ω resistor</td><td>Anode to pin, cathode to resistor</td></tr>
+              <tr><td>D3</td><td>LED 2 + 220Ω resistor</td><td>Same pattern as LED 1</td></tr>
+              <tr><td>D4</td><td>LED 3 + 220Ω resistor</td><td>Same pattern as LED 1</td></tr>
+              <tr><td>D5</td><td>LED 4 + 220Ω resistor</td><td>Same pattern as LED 1</td></tr>
+              <tr><td>D6</td><td>LED 5 + 220Ω resistor</td><td>Same pattern as LED 1</td></tr>
+              <tr><td>GND</td><td>Shared return rail</td><td>All five resistors tie back here</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CODE -->
+  <section id="code">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="eyebrow">Source</div>
+        <h2>The two halves of the system</h2>
+        <p>A short Python loop does the seeing and counting; a short Arduino sketch does the lighting.</p>
+      </div>
+      <div class="code-grid">
+        <div class="code-card">
+          <div class="code-head"><span><span class="dot"></span>finger_count.py</span><span>Python</span></div>
+          <pre><span class="kw">def</span> <span class="fn">count_fingers</span>(landmarks):
+    tip_ids = [4, 8, 12, 16, 20]
+    fingers = []
+
+    <span class="cm"># thumb: compare x, it folds sideways</span>
+    <span class="kw">if</span> landmarks[4].x &lt; landmarks[3].x:
+        fingers.append(1)
+    <span class="kw">else</span>:
+        fingers.append(0)
+
+    <span class="cm"># other four: tip above its pip joint = up</span>
+    <span class="kw">for</span> tip <span class="kw">in</span> tip_ids[1:]:
+        <span class="kw">if</span> landmarks[tip].y &lt; landmarks[tip - 2].y:
+            fingers.append(1)
+        <span class="kw">else</span>:
+            fingers.append(0)
+
+    <span class="kw">return</span> sum(fingers)</pre>
+        </div>
+        <div class="code-card">
+          <div class="code-head"><span><span class="dot"></span>led_driver.ino</span><span>Arduino</span></div>
+          <pre><span class="kw">const</span> <span class="fn">int</span> ledPins[5] = {2, 3, 4, 5, 6};
+
+<span class="kw">void</span> <span class="fn">setup</span>() {
+  Serial.begin(9600);
+  <span class="kw">for</span> (<span class="fn">int</span> i = 0; i &lt; 5; i++) {
+    pinMode(ledPins[i], OUTPUT);
+  }
+}
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">if</span> (Serial.available()) {
+    <span class="fn">int</span> count = Serial.parseInt();
+    <span class="kw">for</span> (<span class="fn">int</span> i = 0; i &lt; 5; i++) {
+      digitalWrite(ledPins[i], i &lt; count ? HIGH : LOW);
+    }
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h2>Fork it, wire it up, hold up a hand.</h2>
+        <p>The full Python script, Arduino sketch, and wiring notes are in the repository. Clone it, connect five LEDs, and you're counting within an evening.</p>
+      </div>
+      <a class="btn btn-primary" href="https://github.com/" target="_blank" rel="noopener">Get the code ↗</a>
+    </div>
+    <div class="footer-meta">
+      <span>hand-tracking-system</span>
+      <span>Python · OpenCV · MediaPipe · Arduino</span>
+      <span>MIT License</span>
+    </div>
+  </div>
+</footer>
+
+<script type="module">
+  import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+  const CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],
+    [0,17]
+  ];
+  const TIP_IDS = [8,12,16,20];
+  const PIP_IDS = [6,10,14,18];
+
+  const video = document.getElementById('live-video');
+  const canvas = document.getElementById('live-canvas');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('camera-stage');
+  const statusEl = document.getElementById('live-status');
+  const toggleBtn = document.getElementById('live-toggle');
+  const countEl = document.getElementById('live-count-readout');
+  const fpsEl = document.getElementById('live-fps');
+  const ledEls = document.querySelectorAll('#live-led-row .led');
+
+  let handLandmarker = null;
+  let stream = null;
+  let running = false;
+  let rafId = null;
+  let lastTs = 0;
+
+  // --- Web Serial (Arduino link) ---
+  const serialStatusEl = document.getElementById('serial-status');
+  const serialBtn = document.getElementById('serial-toggle');
+  let serialPort = null;
+  let serialWriter = null;
+  let serialConnected = false;
+  let lastSentCount = -1;
+
+  function setSerialStatus(text, mode){
+    serialStatusEl.textContent = text;
+    serialStatusEl.classList.remove('on','err');
+    if(mode) serialStatusEl.classList.add(mode);
+  }
+
+  async function connectSerial(){
+    if(!('serial' in navigator)){
+      setSerialStatus('Web Serial not supported — use Chrome or Edge on desktop', 'err');
+      return;
+    }
+    serialBtn.disabled = true;
+    try{
+      setSerialStatus('Choose a port…');
+      serialPort = await navigator.serial.requestPort();
+      await serialPort.open({ baudRate: 9600 });
+      serialWriter = serialPort.writable.getWriter();
+      serialConnected = true;
+      lastSentCount = -1;
+      setSerialStatus('Arduino connected', 'on');
+      serialBtn.textContent = 'Disconnect Arduino';
+    } catch(err){
+      console.error(err);
+      const msg = (err && err.name === 'NotFoundError') ? 'No port selected' : 'Could not open port';
+      setSerialStatus(msg, 'err');
+    } finally {
+      serialBtn.disabled = false;
+    }
+  }
+
+  async function disconnectSerial(){
+    serialConnected = false;
+    if(serialWriter){
+      try{ await serialWriter.close(); } catch(e){}
+      serialWriter = null;
+    }
+    if(serialPort){
+      try{ await serialPort.close(); } catch(e){}
+      serialPort = null;
+    }
+    setSerialStatus('Arduino not connected');
+    serialBtn.textContent = 'Connect Arduino';
+  }
+
+  async function sendCountToArduino(count){
+    if(!serialConnected || !serialWriter) return;
+    if(count === lastSentCount) return;
+    lastSentCount = count;
+    try{
+      await serialWriter.write(new TextEncoder().encode(count + '\n'));
+    } catch(err){
+      console.error('Serial write failed', err);
+      setSerialStatus('Write failed — reconnect', 'err');
+      disconnectSerial();
+    }
+  }
+
+  if('serial' in navigator){
+    navigator.serial.addEventListener('disconnect', (e)=>{
+      if(e.target === serialPort) disconnectSerial();
+    });
+  }
+
+  window.toggleSerial = function(){
+    if(serialConnected) disconnectSerial();
+    else connectSerial();
+  };
+
+  function setStatus(text, mode){
+    statusEl.textContent = text;
+    statusEl.classList.remove('on','err');
+    if(mode) statusEl.classList.add(mode);
+  }
+
+  function dist(a,b){
+    return Math.hypot(a.x-b.x, a.y-b.y);
+  }
+
+  function countFingers(lm){
+    const up = [false,false,false,false,false]; // thumb, index, middle, ring, pinky
+    for(let i=0;i<4;i++){
+      up[i+1] = lm[TIP_IDS[i]].y < lm[PIP_IDS[i]].y;
+    }
+    const mcp17 = lm[17];
+    const dTip = dist(lm[4], mcp17);
+    const dIp = dist(lm[3], mcp17);
+    up[0] = dTip > dIp * 1.05;
+    return { count: up.filter(Boolean).length, up };
+  }
+
+  function drawFrame(landmarksList, upList){
+    ctx.save();
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.translate(canvas.width,0);
+    ctx.scale(-1,1);
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+
+    landmarksList.forEach((lm, handIdx)=>{
+      const up = upList[handIdx];
+      CONNECTIONS.forEach(([a,b])=>{
+        ctx.beginPath();
+        ctx.moveTo(lm[a].x*canvas.width, lm[a].y*canvas.height);
+        ctx.lineTo(lm[b].x*canvas.width, lm[b].y*canvas.height);
+        ctx.strokeStyle = '#3f6d54';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      });
+      lm.forEach((pt, i)=>{
+        const isTip = TIP_IDS.includes(i) || i===4;
+        let lit = false;
+        if(i===4) lit = up[0];
+        else if(i===8) lit = up[1];
+        else if(i===12) lit = up[2];
+        else if(i===16) lit = up[3];
+        else if(i===20) lit = up[4];
+        ctx.beginPath();
+        ctx.arc(pt.x*canvas.width, pt.y*canvas.height, isTip?6:3.5, 0, Math.PI*2);
+        ctx.fillStyle = lit ? '#7cffb2' : '#123b2a';
+        ctx.fill();
+      });
+    });
+    ctx.restore();
+  }
+
+  function updateUI(count){
+    countEl.textContent = count;
+    ledEls.forEach(led=>{
+      const n = parseInt(led.dataset.led,10);
+      led.classList.toggle('on', n <= count);
+    });
+    sendCountToArduino(count);
+  }
+
+  async function ensureModel(){
+    if(handLandmarker) return;
+    setStatus('Loading model…');
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        delegate: "GPU"
+      },
+      runningMode: "VIDEO",
+      numHands: 1
+    });
+  }
+
+  function renderLoop(){
+    if(!running) return;
+    if(video.readyState >= 2){
+      const nowMs = performance.now();
+      const result = handLandmarker.detectForVideo(video, nowMs);
+      if(lastTs){
+        const fps = Math.round(1000 / (nowMs - lastTs));
+        fpsEl.textContent = fps + ' FPS';
+      }
+      lastTs = nowMs;
+
+      if(result.landmarks && result.landmarks.length){
+        const upList = result.landmarks.map(lm => countFingers(lm).up);
+        drawFrame(result.landmarks, upList);
+        updateUI(countFingers(result.landmarks[0]).count);
+      } else {
+        ctx.save();
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.translate(canvas.width,0);
+        ctx.scale(-1,1);
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        ctx.restore();
+        updateUI(0);
+      }
+    }
+    rafId = requestAnimationFrame(renderLoop);
+  }
+
+  async function startCamera(){
+    toggleBtn.disabled = true;
+    try{
+      setStatus('Requesting camera…');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480 } });
+      video.srcObject = stream;
+      await video.play();
+      await ensureModel();
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+
+      running = true;
+      stage.classList.add('active');
+      setStatus('Tracking', 'on');
+      toggleBtn.textContent = 'Stop camera';
+      lastTs = 0;
+      renderLoop();
+    } catch(err){
+      console.error(err);
+      let msg = 'Camera unavailable';
+      if(err && err.name === 'NotAllowedError') msg = 'Camera permission denied';
+      else if(err && err.name === 'NotFoundError') msg = 'No camera found';
+      else if(location.protocol === 'file:') msg = 'Needs to be served over http(s), not opened as a file';
+      setStatus(msg, 'err');
+    } finally {
+      toggleBtn.disabled = false;
+    }
+  }
+
+  function stopCamera(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    if(stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    stage.classList.remove('active');
+    setStatus('Camera off');
+    toggleBtn.textContent = 'Enable camera';
+    fpsEl.textContent = '— FPS';
+    lastSentCount = -1;
+    updateUI(0);
+  }
+
+  window.toggleCamera = function(){
+    if(running) stopCamera();
+    else startCamera();
+  };
+</script>
+
+<script>
+  // gesture states in natural counting order: index, +middle, +ring, +pinky, +thumb
+  const states = [
+    { up:{thumb:false,index:false,middle:false,ring:false,pinky:false}, count:0 },
+    { up:{thumb:false,index:true, middle:false,ring:false,pinky:false}, count:1 },
+    { up:{thumb:false,index:true, middle:true, ring:false,pinky:false}, count:2 },
+    { up:{thumb:false,index:true, middle:true, ring:true, pinky:false}, count:3 },
+    { up:{thumb:false,index:true, middle:true, ring:true, pinky:true }, count:4 },
+    { up:{thumb:true, index:true, middle:true, ring:true, pinky:true }, count:5 }
+  ];
+
+  const tipsExt = {
+    thumb:[62,190], index:[120,148], middle:[150,132], ring:[180,138], pinky:[205,152]
+  };
+  const tipsCurl = {
+    thumb:[85,205], index:[120,175], middle:[150,168], ring:[180,172], pinky:[205,180]
+  };
+
+  const fingerKeys = ['thumb','index','middle','ring','pinky'];
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function applyState(state){
+    fingerKeys.forEach(key=>{
+      const isUp = state.up[key];
+      const line = document.getElementById('f-'+key);
+      const tip = document.getElementById('t-'+key);
+      const pos = isUp ? tipsExt[key] : tipsCurl[key];
+      line.setAttribute('x2', pos[0]);
+      line.setAttribute('y2', pos[1]);
+      tip.setAttribute('cx', pos[0]);
+      tip.setAttribute('cy', pos[1]);
+      line.classList.toggle('up', isUp);
+      tip.classList.toggle('up', isUp);
+    });
+
+    document.getElementById('count-readout').textContent = state.count;
+
+    document.querySelectorAll('#led-row .led').forEach(led=>{
+      const n = parseInt(led.dataset.led,10);
+      led.classList.toggle('on', n <= state.count);
+    });
+  }
+
+  let idx = 0;
+  applyState(states[0]);
+  if(!reduceMotion){
+    setInterval(()=>{
+      idx = (idx + 1) % states.length;
+      applyState(states[idx]);
+    }, 1500);
+  } else {
+    applyState(states[5]);
+  }
+
+  function setMode(mode){
+    const isA = mode === 'a';
+    document.getElementById('btn-mode-a').classList.toggle('active', isA);
+    document.getElementById('btn-mode-b').classList.toggle('active', !isA);
+    document.getElementById('btn-mode-a').setAttribute('aria-selected', isA);
+    document.getElementById('btn-mode-b').setAttribute('aria-selected', !isA);
+    document.getElementById('panel-a').classList.toggle('active', isA);
+    document.getElementById('panel-b').classList.toggle('active', !isA);
+  }
+</script>
+</body>
+</html>
